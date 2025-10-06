@@ -38,10 +38,10 @@ func GetLastFMRecsFromSpotify(response SpotifyResponseObj) ([]byte, error) {
 		resp["ArtistSimilar"] = GetLastFMSimilarArtistsBuiltin(response.ArtistName)
 	}
 
-	// get tags
+	// TODO: get tags
 	tags := []string{}
 
-	// use tags
+	// use tags by case, so probably diff function/endpoint. maybe based on response?
 	resp = GetLastFMRecsByTags(resp, tags)
 
 	jsonResp, err := json.Marshal(resp)
@@ -133,29 +133,38 @@ func GetLastFMSimilarArtistsBuiltin(artistName string) ([]string, error) {
 		return nil, fmt.Errorf("error making similar artist http request: %w", err)
 	}
 
-	resp, err := &http.Client{}.Do(req)
+	var res LastFMArtistSimilar
+	err = httpReqHelper(req, &res)
 	if err != nil {
-		return nil, fmt.Errorf("error making similar artist http client/sending req: %w", err)
+		return nil, err
+	}
+
+	artistNames := make([]string, len(res.SimilarArtists.Artist))
+	for index, artist := range res.SimilarArtists.Artist {
+		artistNames[index] = artist.Name
+	}
+
+	return artistNames, nil
+}
+
+func httpReqHelper(httpReq *http.Request, varForUnmarshal any) error {
+	resp, err := &http.Client{}.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("error making similar artist http client/sending req: %w", err)
 	}
 
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading resp body of similar artist: %w", err)
+		return fmt.Errorf("error reading resp body of similar artist: %w", err)
 	}
 
-	var res LastFMArtistSimilar
-	err := json.Unmarshal(body, &res)
+	err = json.Unmarshal(body, varForUnmarshal)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling resp body of similar artist: %w", err)
+		return fmt.Errorf("error unmarshalling resp body of similar artist: %w", err)
 	}
 
-	artistNames := make([]string, len(res.SimilarArtists.Artist))
-	for index, artist := range res.SimilarArtists.Artist {
-		artistNames[index] = artist
-	}
-
-	return artistNames, nil
+	return nil
 }
 
 // given resp map and tags list, return updated resp map

@@ -13,13 +13,76 @@ func SetupRoutes(app *fiber.App) {
 	api := app.Group("/api/v1")
 
 	lastFMAPI := api.Group("/lastfm")
-	lastFMAPI.Get("/track", handlers.InToOut)
-	lastFMAPI.Get("/artist", handlers.InToOut)
-	lastFMAPI.Get("/")
+	lastFMAPI.Get("/track", GetLastFMTrack)
+	lastFMAPI.Get("/tracksimilar", GetLastFMTrackSimilar)
+	lastFMAPI.Get("/artist", GetLastFMArtist)
+	lastFMAPI.Get("/artistsimilar", GetLastFMArtistSimilar)
+	lastFMAPI.Get("/album", GetLastFMAlbum)
 
-	// musicBrainzAPI = api.Group("/musicBrainz")
+	// explore = api.Group("/explore")
 
-	// deezerAPI := api.Group("/deezer")
+	// musicBrainzAPI = explore.Group("/musicBrainz")
+	// musicBrainzAPI.Get("")
+	
+	// deezerAPI := explore.Group("/deezer")
+	// deezerAPI.Get("")
+}
+
+func GetLastFMTrack(c *fiber.Ctx) error {
+	link := c.Query("link")
+	jsonResponse, err := handlers.SpotifyInNameOut(link)
+	if err != nil {
+		return &fiber.Error{
+			Code:    fiber.StatusBadRequest,
+			Message: "Error with spotifyAPIHandler.",
+		}
+	}
+}
+
+func GetLastFMArtist(c *fiber.Ctx) error {
+	link := c.Query("link")
+	jsonResponse, err := handlers.SpotifyInNameOut(link)
+	if err != nil {
+		return &fiber.Error{
+			Code:    fiber.StatusBadRequest,
+			Message: "Error with spotifyAPIHandler.",
+		}
+	}
+}
+
+func GetLastFMAlbum(c *fiber.Ctx) error {
+	link := c.Query("link")
+	jsonResponse, err := handlers.SpotifyInNameOut(link)
+	if err != nil {
+		return &fiber.Error{
+			Code:    fiber.StatusBadRequest,
+			Message: "Error with spotifyAPIHandler.",
+		}
+	}
+	
+}
+
+func GetLastFMTrackSimilar(c *fiber.Ctx) error {
+	link := c.Query("link")
+	jsonResponse, err := handlers.SpotifyInNameOut(link)
+	if err != nil {
+		return &fiber.Error{
+			Code:    fiber.StatusBadRequest,
+			Message: "Error with spotifyAPIHandler.",
+		}
+	}
+	
+}
+
+func GetLastFMArtistSimilar(c *fiber.Ctx) error {
+	link := c.Query("link")
+	jsonResponse, err := handlers.SpotifyInNameOut(link)
+	if err != nil {
+		return &fiber.Error{
+			Code:    fiber.StatusBadRequest,
+			Message: "Error with spotifyAPIHandler.",
+		}
+	}
 }
 
 func homePage(c *fiber.Ctx) error {

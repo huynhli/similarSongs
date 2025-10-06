@@ -35,12 +35,15 @@ type SpotifyResponseObj struct {
 }
 
 // input a artist, album, or track. get a json obj with Artist, ?Album, ?Track.
-func InToOut(c *fiber.Ctx) error {
+func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 	// get trimmed, lowercase, valid link as input, along with type of output wanted
 	// TODO any link validation to still do (edge cases)
 	// build request with sanitizing/validating
-	link := c.Query("link")
+
 	linkSplit := strings.Split(link, "/")
+	if len(linkSplit) < 5 {
+        return nil, fmt.Errorf("invalid link: %s", link)
+    }
 	typeLink := linkSplit[3]
 
 	var decider string
@@ -52,19 +55,13 @@ func InToOut(c *fiber.Ctx) error {
 	case "track":
 		decider = "tracks"
 	default:
-		return &fiber.Error{
-			Code:    fiber.StatusBadRequest,
-			Message: "Link does not point to an artist, album, or track. Please try a different link.",
-		}
+		return nil, fmt.Errorf("Link does not point to an artist, album, or track. Please try a different link, and not: %s", link)
 	}
 
 	// valid link, so get token
 	spotifyAccessToken, err := getSpotifyAPIToken()
 	if err != nil {
-		return &fiber.Error{
-			Message: spotifyAccessToken + err.Error(),
-			Code:    fiber.StatusUnauthorized,
-		}
+		return nil, fmt.Errorf("Token error: %s", err)
 	}
 
 	// finish building req
@@ -77,29 +74,20 @@ func InToOut(c *fiber.Ctx) error {
 	requestURL := `https://api.spotify.com/v1/` + decider + "/" + id[0]
 	req, err := http.NewRequest("GET", requestURL, nil)
 	if err != nil {
-		return &fiber.Error{
-			Message: "Error calling API",
-			Code:    fiber.ErrBadGateway.Code,
-		}
+		return nil, fmt.Errorf("Error calling API: %s", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+spotifyAccessToken)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return &fiber.Error{
-			Message: err.Error(),
-			Code:    fiber.StatusForbidden,
-		}
+		return nil, fmt.Errorf("Error sending request to Spotify API: %s", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &fiber.Error{
-			Message: err.Error(),
-			Code:    fiber.StatusInternalServerError,
-		}
+		return nil, fmt.Errorf("Error reading body from Spotify API: %s", err)
 	}
 
 	log.Printf("Spotify raw response: %s", string(body))
@@ -107,32 +95,26 @@ func InToOut(c *fiber.Ctx) error {
 	switch decider {
 	case "artists":
 		var a Artist
-		if err := json.Unmarshal(body, &a); err != nil {
-			return &fiber.Error{
-				Code:    fiber.StatusInternalServerError,
-				Message: "failed to parse track JSON",
-			}
+		err := json.Unmarshal(body, &a)
+		if err != nil {
+			return nil, fmt.Errorf("Error unmarshalling artist from Spotify API: %s", err)
 		}
 		response.ArtistName = a.Name
 
 	case "albums":
 		var a Album
-		if err := json.Unmarshal(body, &a); err != nil {
-			return &fiber.Error{
-				Code:    fiber.StatusInternalServerError,
-				Message: "failed to parse track JSON",
-			}
+		err := json.Unmarshal(body, &a)
+		if err != nil {
+			return nil, fmt.Errorf("Error unmarshalling album from Spotify API: %s", err)
 		}
 		response.ArtistName = a.Artists[0].Name
 		response.AlbumName = &a.Name
 
 	case "tracks":
-		var t Track
-		if err := json.Unmarshal(body, &t); err != nil {
-			return &fiber.Error{
-				Code:    fiber.StatusInternalServerError,
-				Message: "failed to parse track JSON",
-			}
+		var t Artist
+		err := json.Unmarshal(body, &t)
+		if err != nil {
+			return nil, fmt.Errorf("Error unmarshalling track from Spotify API: %s", err)
 		}
 		response.ArtistName = t.Artists[0].Name
 		response.AlbumName = &t.Album.Name
@@ -142,7 +124,7 @@ func InToOut(c *fiber.Ctx) error {
 	// artist --> returns artist
 	// album --> returns album + artist
 	// track --> returns track + album + artist
-	return c.JSON(response)
+	return response, nil
 }
 
 type TokenResponse struct {
