@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"go_backend/config"
 	"io"
 	"log"
 	"net/http"
 	"strings"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 type Artist struct {
@@ -42,8 +41,8 @@ func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 
 	linkSplit := strings.Split(link, "/")
 	if len(linkSplit) < 5 {
-        return nil, fmt.Errorf("invalid link: %s", link)
-    }
+		return SpotifyResponseObj{}, fmt.Errorf("invalid link: %s", link)
+	}
 	typeLink := linkSplit[3]
 
 	var decider string
@@ -55,13 +54,13 @@ func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 	case "track":
 		decider = "tracks"
 	default:
-		return nil, fmt.Errorf("Link does not point to an artist, album, or track. Please try a different link, and not: %s", link)
+		return SpotifyResponseObj{}, fmt.Errorf("link does not point to an artist, album, or track. Please try a different link, and not: %s", link)
 	}
 
 	// valid link, so get token
 	spotifyAccessToken, err := getSpotifyAPIToken()
 	if err != nil {
-		return nil, fmt.Errorf("Token error: %s", err)
+		return SpotifyResponseObj{}, fmt.Errorf("token error: %s", err)
 	}
 
 	// finish building req
@@ -74,20 +73,20 @@ func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 	requestURL := `https://api.spotify.com/v1/` + decider + "/" + id[0]
 	req, err := http.NewRequest("GET", requestURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Error calling API: %s", err)
+		return SpotifyResponseObj{}, fmt.Errorf("error calling API: %s", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+spotifyAccessToken)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Error sending request to Spotify API: %s", err)
+		return SpotifyResponseObj{}, fmt.Errorf("error sending request to Spotify API: %s", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading body from Spotify API: %s", err)
+		return SpotifyResponseObj{}, fmt.Errorf("error reading body from Spotify API: %s", err)
 	}
 
 	log.Printf("Spotify raw response: %s", string(body))
@@ -97,7 +96,7 @@ func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 		var a Artist
 		err := json.Unmarshal(body, &a)
 		if err != nil {
-			return nil, fmt.Errorf("Error unmarshalling artist from Spotify API: %s", err)
+			return SpotifyResponseObj{}, fmt.Errorf("error unmarshalling artist from Spotify API: %s", err)
 		}
 		response.ArtistName = a.Name
 
@@ -105,16 +104,16 @@ func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 		var a Album
 		err := json.Unmarshal(body, &a)
 		if err != nil {
-			return nil, fmt.Errorf("Error unmarshalling album from Spotify API: %s", err)
+			return SpotifyResponseObj{}, fmt.Errorf("error unmarshalling album from Spotify API: %s", err)
 		}
 		response.ArtistName = a.Artists[0].Name
 		response.AlbumName = &a.Name
 
 	case "tracks":
-		var t Artist
+		var t Track
 		err := json.Unmarshal(body, &t)
 		if err != nil {
-			return nil, fmt.Errorf("Error unmarshalling track from Spotify API: %s", err)
+			return SpotifyResponseObj{}, fmt.Errorf("error unmarshalling track from Spotify API: %s", err)
 		}
 		response.ArtistName = t.Artists[0].Name
 		response.AlbumName = &t.Album.Name
@@ -174,13 +173,13 @@ func getSpotifyAPIToken() (string, error) {
 	if err != nil {
 		return "Error unmarshalling POST JSON response into Token", err
 	}
-
+	log.Println("Spotify access token:", tokenResponse.AccessToken)
 	return tokenResponse.AccessToken, nil
 }
 
-// returns popularity and genre of spotify artist
-func spotifyArtistPopAndGenre(spotifyArtistIDs []string) (int, []string, error) {
-	genres := []string{"pop", "dance", spotifyArtistIDs[0]}
-	popularity := 100
-	return popularity, genres, nil
-}
+// // returns popularity and genre of spotify artist
+// func spotifyArtistPopAndGenre(spotifyArtistIDs []string) (int, []string, error) {
+// 	genres := []string{"pop", "dance", spotifyArtistIDs[0]}
+// 	popularity := 100
+// 	return popularity, genres, nil
+// }

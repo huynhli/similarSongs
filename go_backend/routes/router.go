@@ -23,7 +23,7 @@ func SetupRoutes(app *fiber.App) {
 
 	// musicBrainzAPI = explore.Group("/musicBrainz")
 	// musicBrainzAPI.Get("")
-	
+
 	// deezerAPI := explore.Group("/deezer")
 	// deezerAPI.Get("")
 }
@@ -37,6 +37,8 @@ func GetLastFMTrack(c *fiber.Ctx) error {
 			Message: "Error with spotifyAPIHandler.",
 		}
 	}
+
+	return c.JSON(jsonResponse)
 }
 
 func GetLastFMArtist(c *fiber.Ctx) error {
@@ -48,6 +50,8 @@ func GetLastFMArtist(c *fiber.Ctx) error {
 			Message: "Error with spotifyAPIHandler.",
 		}
 	}
+
+	return c.JSON(jsonResponse)
 }
 
 func GetLastFMAlbum(c *fiber.Ctx) error {
@@ -59,7 +63,8 @@ func GetLastFMAlbum(c *fiber.Ctx) error {
 			Message: "Error with spotifyAPIHandler.",
 		}
 	}
-	
+
+	return c.JSON(jsonResponse)
 }
 
 func GetLastFMTrackSimilar(c *fiber.Ctx) error {
@@ -71,7 +76,8 @@ func GetLastFMTrackSimilar(c *fiber.Ctx) error {
 			Message: "Error with spotifyAPIHandler.",
 		}
 	}
-	
+
+	return c.JSON(jsonResponse)
 }
 
 func GetLastFMArtistSimilar(c *fiber.Ctx) error {
@@ -83,6 +89,8 @@ func GetLastFMArtistSimilar(c *fiber.Ctx) error {
 			Message: "Error with spotifyAPIHandler.",
 		}
 	}
+
+	return c.JSON(jsonResponse)
 }
 
 func homePage(c *fiber.Ctx) error {

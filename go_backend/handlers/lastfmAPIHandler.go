@@ -4,7 +4,72 @@ import (
 	"encoding/json"
 	"fmt"
 	"go_backend/config"
+	"io"
+	"net/http"
+	"strings"
 )
+
+// TODO: Save MBID
+type RecommendationWithArtist struct {
+	RecName    string
+	ArtistName string
+}
+
+type LastFMTrackSimilar struct {
+	SimilarTracks struct {
+		Track []struct {
+			Name   string  `json:"name"`
+			Match  float64 `json:"match"`
+			MBID   string  `json:"mbid"`
+			Artist struct {
+				Name string `json:"name"`
+			} `json:"artist"`
+		} `json:"track"`
+	} `json:"similartracks"`
+}
+
+type LastFMArtistSimilar struct {
+	SimilarArtists struct {
+		Artist []struct {
+			Name  string `json:"name"`
+			Match string `json:"match"`
+			MBID  string `json:"mbid"`
+		} `json:"artist"`
+	} `json:"similarartists"`
+}
+
+type LastFMTrackRec struct {
+	Tracks struct {
+		Track []struct {
+			Name   string `json:"name"`
+			MBID   string `json:"mbid"`
+			Artist struct {
+				Name string `json:"name"`
+			} `json:"artist"`
+		} `json:"track"`
+	} `json:"tracks"`
+}
+
+type LastFMArtistRec struct {
+	Artists struct {
+		Artist []struct {
+			Name string `json:"name"`
+			MBID string `json:"mbid"`
+		} `json:"artist"`
+	} `json:"topartists"`
+}
+
+type LastFMAlbumRec struct {
+	Albums struct {
+		Album []struct {
+			Name   string `json:"name"`
+			MBID   string `json:"mbid"`
+			Artist struct {
+				Name string `json:"name"`
+			} `json:"artist"`
+		} `json:"album"`
+	} `json:"albums"`
+}
 
 // take in spotify response obj, return list of recommendations (artists + albums + track)
 func GetLastFMRecsFromSpotify(response SpotifyResponseObj) ([]byte, error) {
@@ -13,7 +78,6 @@ func GetLastFMRecsFromSpotify(response SpotifyResponseObj) ([]byte, error) {
 	// artist -- artist tags, artists similar
 
 	// ensure lastfm apikey
-
 
 	// map with arist, track, album keys
 	resp := make(map[string][]string)
@@ -26,23 +90,21 @@ func GetLastFMRecsFromSpotify(response SpotifyResponseObj) ([]byte, error) {
 	if response.TrackName != nil {
 		// track similar
 		// get similar tracks using track name, artist name
-		resp["TrackSimilar"] = GetLastFMSimilarTracksBuiltin(*response.TrackName, response.ArtistName) 
-	}
-	else if response.TrackName != nil {
+		// resp["TrackSimilar"] = GetLastFMSimilarTracksBuiltin(*response.TrackName, response.ArtistName)
+	} else if response.AlbumName != nil {
 		// track similar
 		// get similar tracks using track name, artist name
-		resp["AlbumSimilar"] = GetLastFMSimilarTracksBuiltin(*response.TrackName, response.ArtistName) 
-	}
-	else if response.AlbumName != nil {
+		// resp["AlbumSimilar"] = GetLastFMSimilarTracksBuiltin(*response.TrackName, response.ArtistName)
+	} else {
 		// artists similar
-		resp["ArtistSimilar"] = GetLastFMSimilarArtistsBuiltin(response.ArtistName)
+		// resp["ArtistSimilar"] = GetLastFMSimilarArtistsBuiltin(response.ArtistName)
 	}
 
 	// TODO: get tags
-	tags := []string{}
+	// tags := []string{}
 
 	// use tags by case, so probably diff function/endpoint. maybe based on response?
-	resp = GetLastFMRecsByTags(resp, tags)
+	// resp = GetLastFMRecsByTags(resp, tags)
 
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
@@ -54,54 +116,33 @@ func GetLastFMRecsFromSpotify(response SpotifyResponseObj) ([]byte, error) {
 
 // given track name and artist name, return track recommendations from LastFM
 // TODO: maybe dont take all of them? limit query?
-type LastFMTrackSimilar struct {
-	SimilarTracks struct {
-		Track []struct {
-			Name 	string	`json:"name"`
-			Match	float64	`json:"match"`
-			MBID	string	`json:"mbid"`
-			Artist 	struct {
-				Name	string	`json:"name"`	
-			} `json:"artist"`
-		} `json:"track"`
-	} `json:"similartracks"`
-}
-
-func GetLastFMSimilarTracksBuiltin(trackName string, artistName string) ([]string, error) {
+func GetLastFMSimilarTracksBuiltin(trackName string, artistName string) ([]RecommendationWithArtist, error) {
 	req, err := http.NewRequest(
 		"GET",
 		"http://ws.audioscrobbler.com/2.0/"+
-			"?method="+"track.getsimilar"
-			+"&track="+trackName
-			+"&artist="+artistName
-			+"&api_key="+config.LastFMAPIKey
-			+"&format=json", 
-		nil
+			"?method="+"track.getsimilar"+
+			"&track="+strings.ToLower(trackName)+
+			"&artist="+strings.ToLower(artistName)+
+			"&api_key="+config.LastFMAPIKey+
+			"&format=json",
+		nil,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error making similar tracks http request: %w", err)
 	}
 
-	resp, err := &http.Client{}.Do(req)
+	var res LastFMTrackSimilar
+	err = httpReqHelper(req, &res)
 	if err != nil {
-		return nil, fmt.Errorf("error making similar tracks http client/sending req: %w", err)
+		return nil, err
 	}
 
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading resp body of similar tracks: %w", err)
-	}
-
-	var res LastFMTrackSimilar 
-	err := json.Unmarshal(body, &res)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling resp body of similar tracks: %w", err)
-	}
-
-	trackNames := make([](string, string), len(res.SimilarTracks.Track))
+	trackNames := make([]RecommendationWithArtist, len(res.SimilarTracks.Track))
 	for index, track := range res.SimilarTracks.Track {
-		trackNames[index] = (track.Name, track.Artist.Name)
+		trackNames[index] = RecommendationWithArtist{
+			RecName:    track.Name,
+			ArtistName: track.Artist.Name,
+		}
 	}
 
 	return trackNames, nil
@@ -109,25 +150,15 @@ func GetLastFMSimilarTracksBuiltin(trackName string, artistName string) ([]strin
 
 // given artist name, return artist recs from LastFM
 // TODO: maybe dont take all of them? limit query?
-type LastFMArtistSimilar struct {
-	SimilarArtists struct {
-		Track []struct {
-			Name 	string	`json:"name"`
-			Match	float64	`json:"match"`
-			MBID	string	`json:"mbid"`
-		} `json:"artist"`
-	} `json:"similarartists"`
-}
-
 func GetLastFMSimilarArtistsBuiltin(artistName string) ([]string, error) {
 	req, err := http.NewRequest(
 		"GET",
 		"http://ws.audioscrobbler.com/2.0/"+
 			"?method="+"artist.getsimilar"+
-			"&artist="+artistName
-			+"&api_key="+config.LastFMAPIKey
-			+"&format=json", 
-		nil
+			"&artist="+strings.ToLower(artistName)+
+			"&api_key="+config.LastFMAPIKey+
+			"&format=json",
+		nil,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error making similar artist http request: %w", err)
@@ -147,8 +178,122 @@ func GetLastFMSimilarArtistsBuiltin(artistName string) ([]string, error) {
 	return artistNames, nil
 }
 
+// given resp map and tags list, return updated resp map
+// func GetLastFMRecsByTags(resp map[string][]string, tags []string) (map[string][]string, error) {
+// 	resp["Track"] = GetLastFMTracksByTag(tags)
+// 	resp["Album"] = GetLastFMAlbumsByTag(tags)
+// 	resp["Artist"] = GetLastFMArtistsByTag(tags)
+// 	return resp, nil
+// }
+
+// given list of 3 tags, return track recommendations from LastFM
+func GetLastFMTracksByTag(tags []string) (map[string][]RecommendationWithArtist, error) {
+	trackRecs := make(map[string][]RecommendationWithArtist)
+	for _, tag := range tags {
+		req, err := http.NewRequest(
+			"GET",
+			"http://ws.audioscrobbler.com/2.0/"+
+				"?method="+"tag.gettoptracks"+
+				"&tag="+strings.ToLower(tag)+
+				"&api_key="+config.LastFMAPIKey+
+				"&format=json",
+			nil,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error making track recs by tag http request: %w", err)
+		}
+
+		var res LastFMTrackRec
+		err = httpReqHelper(req, &res)
+		if err != nil {
+			return nil, err
+		}
+
+		trackRecsForTag := make([]RecommendationWithArtist, len(res.Tracks.Track))
+		for index, recommendedTrack := range res.Tracks.Track {
+			trackRecsForTag[index] = RecommendationWithArtist{
+				RecName:    recommendedTrack.Name,
+				ArtistName: recommendedTrack.Artist.Name,
+			}
+		}
+		trackRecs[tag] = trackRecsForTag
+	}
+
+	return trackRecs, nil
+}
+
+// given list of tags, return album recommendations from LastFM
+func GetLastFMAlbumsByTag(tags []string) (map[string][]RecommendationWithArtist, error) {
+	albumRecs := make(map[string][]RecommendationWithArtist)
+	for _, tag := range tags {
+		req, err := http.NewRequest(
+			"GET",
+			"http://ws.audioscrobbler.com/2.0/"+
+				"?method="+"tag.gettopalbums"+
+				"&tag="+strings.ToLower(tag)+
+				"&api_key="+config.LastFMAPIKey+
+				"&format=json",
+			nil,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error making album recs by tag http request: %w", err)
+		}
+
+		var res LastFMAlbumRec
+		err = httpReqHelper(req, &res)
+		if err != nil {
+			return nil, err
+		}
+
+		albumRecsForTag := make([]RecommendationWithArtist, len(res.Albums.Album))
+		for index, recommendedAlbum := range res.Albums.Album {
+			albumRecsForTag[index] = RecommendationWithArtist{
+				RecName:    recommendedAlbum.Name,
+				ArtistName: recommendedAlbum.Artist.Name,
+			}
+		}
+		albumRecs[tag] = albumRecsForTag
+	}
+
+	return albumRecs, nil
+}
+
+// given list of tags, return artist recommendations from LastFM
+func GetLastFMArtistsByTag(tags []string) (map[string][]string, error) {
+	artistRecs := make(map[string][]string)
+	for _, tag := range tags {
+		req, err := http.NewRequest(
+			"GET",
+			"http://ws.audioscrobbler.com/2.0/"+
+				"?method="+"tag.gettopartists"+
+				"&tag="+strings.ToLower(tag)+
+				"&api_key="+config.LastFMAPIKey+
+				"&format=json",
+			nil,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error making album recs by tag http request: %w", err)
+		}
+
+		var res LastFMArtistRec
+		err = httpReqHelper(req, &res)
+		if err != nil {
+			return nil, err
+		}
+
+		artistRecsForTag := make([]string, len(res.Artists.Artist))
+		for index, recommendedArtist := range res.Artists.Artist {
+			artistRecsForTag[index] = recommendedArtist.Name
+		}
+		artistRecs[tag] = artistRecsForTag
+	}
+
+	return artistRecs, nil
+}
+
 func httpReqHelper(httpReq *http.Request, varForUnmarshal any) error {
-	resp, err := &http.Client{}.Do(httpReq)
+	client := &http.Client{}
+	resp, err := client.Do(httpReq)
 	if err != nil {
 		return fmt.Errorf("error making similar artist http client/sending req: %w", err)
 	}
@@ -165,174 +310,4 @@ func httpReqHelper(httpReq *http.Request, varForUnmarshal any) error {
 	}
 
 	return nil
-}
-
-// given resp map and tags list, return updated resp map
-func GetLastFMRecsByTags(resp map[string][]string, tags []string) (map[string][]string, error) {
-	resp["Track"] = GetLastFMTracksByTag(tags)
-	resp["Album"] = GetLastFMAlbumsByTag(tags)
-	resp["Artist"] = GetLastFMArtistsByTag(tags)
-	return resp, nil
-}
-
-// given list of 3 tags, return track recommendations from LastFM
-type LastFMTrackRec struct {
-	Tracks struct {
-		Track []struct {
-			Name 	string	`json:"name"`
-			MBID	string	`json:"mbid"`
-		} `json:"track"`
-	} `json:"tracks"`
-}
-
-func GetLastFMTracksByTag(tags []string) ([]string, error) {
-	trackRecs := make(map[string][]string)
-	for _, tag := range tags {
-		req, err := http.NewRequest(
-			"GET",
-			"http://ws.audioscrobbler.com/2.0/"+
-				"?method="+"tag.gettoptracks"+
-				"&tag="+tag
-				+"&api_key="+config.LastFMAPIKey
-				+"&format=json",
-			nil
-		)
-		if err != nil {
-			return nil, fmt.Errorf("error making track recs by tag http request: %w", err)
-		}
-
-		resp, err := &http.Client{}.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("error making track recs by tag http client/sending req: %w", err)
-		}
-
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("error reading resp body of track recs by tag: %w", err)
-		}
-
-		var res LastFMTrackRec
-		err := json.Unmarshal(body, &res)
-		if err != nil {
-			return nil, fmt.Errorf("error unmarshalling resp body of track recs by tag: %w", err)
-		}
-
-		trackRecsForTag := make([]string, len(res.Tracks.Track))
-		for index, recommendedTrack := range res.Tracks.Track {
-			trackRecsForTag[index] = recommendedTrack
-		}
-		trackRecs[tag] = trackRecsForTag
-	}
-
-	return trackRecs, nil
-}
-
-// given list of tags, return album recommendations from LastFM
-type LastFMAlbumRec struct {
-	Albums struct {
-		Album []struct {
-			Name 	string	`json:"name"`
-			MBID	string	`json:"mbid"`
-			Artist 	struct {
-				Name	string	`json:"name"`	
-			} `json:"artist"`
-		} `json:"album"`
-	} `json:"albums"`
-}
-
-func GetLastFMAlbumsByTag(tags []string) ([]string, error) {
-	albumRecs := make(map[string][]string)
-	for _, tag := range tags {
-		req, err := http.NewRequest(
-			"GET",
-			"http://ws.audioscrobbler.com/2.0/"+
-				"?method="+"tag.gettopalbums"+
-				"&tag="+tag
-				+"&api_key="+config.LastFMAPIKey
-				+"&format=json",
-			nil
-		)
-		if err != nil {
-			return nil, fmt.Errorf("error making album recs by tag http request: %w", err)
-		}
-
-		resp, err := &http.Client{}.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("error making album recs by tag http client/sending req: %w", err)
-		}
-
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("error reading resp body of album recs by tag: %w", err)
-		}
-
-		var res LastFMAlbumRec
-		err := json.Unmarshal(body, &res)
-		if err != nil {
-			return nil, fmt.Errorf("error unmarshalling resp body of album recs by tag: %w", err)
-		}
-
-		albumRecsForTag := make([]string, len(res.Albums.Album))
-		for index, recommendedAlbum := range res.Albums.Album {
-			albumRecsForTag[index] = recommendedAlbum
-		}
-		albumRecs[tag] = albumRecsForTag
-	}
-
-	return albumRecs, nil
-}
-
-// given list of tags, return artist recommendations from LastFM
-type LastFMArtistRec struct {
-	Artists struct {
-		Artist []struct {
-			Name 	string	`json:"name"`
-			MBID	string	`json:"mbid"`
-		} `json:"artist"`
-	} `json:"topartists"`
-}
-
-func GetLastFMArtistsByTag(tags []string) ([]string, error) {
-	artistRecs := make(map[string][]string)
-	for _, tag := range tags {
-		req, err := http.NewRequest(
-			"GET",
-			"http://ws.audioscrobbler.com/2.0/"+
-				"?method="+"tag.gettopartists"+
-				"&tag="+tag
-				+"&api_key="+config.LastFMAPIKey
-				+"&format=json",
-			nil
-		)
-		if err != nil {
-			return nil, fmt.Errorf("error making album recs by tag http request: %w", err)
-		}
-
-		resp, err := &http.Client{}.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("error making album recs by tag http client/sending req: %w", err)
-		}
-
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("error reading resp body of album recs by tag: %w", err)
-		}
-
-		var res LastFMArtistRec
-		err := json.Unmarshal(body, &res)
-		if err != nil {
-			return nil, fmt.Errorf("error unmarshalling resp body of album recs by tag: %w", err)
-		}
-
-		artistRecsForTag := make([]string, len(res.Artists.Artist))
-		for index, recommendedArtist := range res.Artists.Artist {
-			artistRecsForTag[index] = recommendedArtist
-		}
-		artistRecs[tag] = artistRecsForTag
-	}
-
-	return artistRecs, nil
 }
