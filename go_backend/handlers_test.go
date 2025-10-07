@@ -3,28 +3,32 @@ package main
 import (
 	"go_backend/config"
 	"go_backend/handlers"
+	"go_backend/routes"
+	"io"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
 )
 
-// func TestFiberRoute(t *testing.T) {
-// 	config.LoadConfig()
-// 	app := fiber.New()
-// 	app.Get("/test", handlers.LastFM)
+func TestGetLastFMTrackRoute(t *testing.T) {
+	config.LoadConfig()
+	app := fiber.New()
+	app.Get("/test", routes.GetLastFMTrack)
 
-// 	req := httptest.NewRequest("GET", "/test?link=https://open.spotify.com/artist/6vWDO969PvNqNYHIOW5v0m?si=i8pS1ntxTF-tCTV1rItksw", nil)
-// 	resp, err := app.Test(req)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, 200, resp.StatusCode)
+	req := httptest.NewRequest("GET", "/test?link=https://open.spotify.com/artist/6vWDO969PvNqNYHIOW5v0m?si=i8pS1ntxTF-tCTV1rItksw", nil)
+	resp, err := app.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 
-// 	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
-// 	// Check that the JSON contains the expected fields
-// 	assert.Contains(t, string(body), `"artist"`)
-// 	// assert.Contains(t, string(body), `"track"`)
-// 	// assert.Contains(t, string(body), `"album"`)
-// }
+	// Check that the JSON contains the expected fields
+	assert.Contains(t, string(body), `"artist"`)
+	// assert.Contains(t, string(body), `"track"`)
+	// assert.Contains(t, string(body), `"album"`)
+}
 
 func TestSpotifyAndLastFMHandlers(t *testing.T) {
 	// TODO group tests
