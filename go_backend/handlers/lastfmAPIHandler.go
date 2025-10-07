@@ -94,8 +94,6 @@ func GetLastFMTags(response SpotifyResponseObj) ([]string, error) {
 	// // resp["Track"] = []string{}
 	// // resp["TrackSimilar"] = []string{}
 	// // resp["Album"] = []string{}
-
-	// TODO: get tags
 	tags := []string{}
 	if response.TrackName != nil {
 		req, err := http.NewRequest(
@@ -108,6 +106,7 @@ func GetLastFMTags(response SpotifyResponseObj) ([]string, error) {
 				"&format=json",
 			nil,
 		)
+		fmt.Print("request: ", req)
 		if err != nil {
 			return nil, fmt.Errorf("error making http request for getting lastfm tags for track: %w", err)
 		}

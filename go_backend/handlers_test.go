@@ -113,6 +113,51 @@ func TestLastFMArtistByTag(t *testing.T) {
 	assert.Equal(t, "ABBA", resp[tag[0]][0])
 }
 
+func TestLastFMTrackTags(t *testing.T) {
+	config.LoadConfig()
+	trackTemp := "Paranoid Android"
+
+	testResp := handlers.SpotifyResponseObj{
+		ArtistName: "Radiohead",
+		TrackName:  &trackTemp,
+	}
+	tags, err := handlers.GetLastFMTags(testResp)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, tags)
+	assert.Equal(t, "alternative rock", tags[0])
+	assert.Equal(t, "alternative", tags[1])
+	assert.Equal(t, "rock", tags[2])
+}
+
+func TestLastFMAlbumTags(t *testing.T) {
+	config.LoadConfig()
+	albumTemp := "The Bends"
+
+	testResp := handlers.SpotifyResponseObj{
+		ArtistName: "Radiohead",
+		AlbumName:  &albumTemp,
+	}
+	tags, err := handlers.GetLastFMTags(testResp)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, tags)
+	assert.Equal(t, "alternative rock", tags[0])
+	assert.Equal(t, "1995", tags[1])
+	assert.Equal(t, "rock", tags[2])
+}
+
+func TestLastFMArtistTags(t *testing.T) {
+	config.LoadConfig()
+	testResp := handlers.SpotifyResponseObj{
+		ArtistName: "Cher",
+	}
+	tags, err := handlers.GetLastFMTags(testResp)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, tags)
+	assert.Equal(t, "pop", tags[0])
+	assert.Equal(t, "female vocalists", tags[1])
+	assert.Equal(t, "80s", tags[2])
+}
+
 // func TestSpotifyInNameOutAlbum(t *testing.T) {
 // 	config.LoadConfig()
 // 	app := fiber.New()
