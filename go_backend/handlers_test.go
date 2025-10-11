@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"go_backend/config"
-	"go_backend/handlers"
-	"go_backend/routes"
 	"io"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/huynhli/similarsongs/go_backend/config"
+	"github.com/huynhli/similarsongs/go_backend/handlers"
+	"github.com/huynhli/similarsongs/go_backend/routes"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"

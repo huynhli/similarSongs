@@ -5,11 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"go_backend/config"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/huynhli/similarsongs/go_backend/config"
 )
 
 type Artist struct {

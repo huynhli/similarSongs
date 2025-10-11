@@ -10,8 +10,8 @@ import (
 var (
 	SpotifyClientID     string
 	SpotifyClientSecret string
-	LastFMAPIKey		string
-	LastFMSharedSecret	string
+	LastFMAPIKey        string
+	LastFMSharedSecret  string
 	// SpotifyRedirectURI  string
 )
 

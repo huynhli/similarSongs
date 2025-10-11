@@ -3,11 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"go_backend/config"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/huynhli/similarsongs/go_backend/config"
 )
 
 // TODO: Save MBID
