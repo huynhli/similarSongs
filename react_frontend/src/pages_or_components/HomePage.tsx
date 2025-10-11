@@ -31,20 +31,20 @@ export default function HomePage() {
         offset: ["start end", "end start"]
     })
 
-    useEffect(() => {
-        if (location.hash) {
-        const el = document.querySelector(location.hash);
-            if (el) {
-                el.scrollIntoView({ behavior: "smooth" });
-            }
-        }
-    }, [location]);
+    // useEffect(() => {
+    //     if (location.hash) {
+    //     const el = document.querySelector(location.hash);
+    //         if (el) {
+    //             el.scrollIntoView({ behavior: "smooth" });
+    //         }
+    //     }
+    // }, [location]);
 
     const [ link, setLink ] = useState<string>("")
     const handleSubmit = (e: React.FormEvent) => {   
         e.preventDefault()
 
-        var trimmedLink = link.trim().toLowerCase()
+        var trimmedLink = link.trim()
         if (!trimmedLink || !trimmedLink.startsWith('https://open.spotify.com/')){
             trimmedLink = 'https://open.spotify.com/'
         } 

@@ -57,7 +57,6 @@ export default function GeneratorPage() {
       setValidationError(error);
       return;
     }
-
     setValidationError(null);
 
     const split = sanitizedLink.split('/');
