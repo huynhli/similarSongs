@@ -19,20 +19,20 @@ type RecommendationResponse = {
 
 type resourceForQueryType = {
   type: string,
-  id: string,
+  sanitizedLink: string,
 }
 
 function getRecs(resourceForQuery: resourceForQueryType | null) {
   const queryFnHelp = resourceForQuery?.type === "album"
-    ? () => getAlbumRec(resourceForQuery.id)
+    ? () => getAlbumRec(resourceForQuery.sanitizedLink)
     : resourceForQuery?.type === "artist"
-      ? () => getArtistRec(resourceForQuery.id)
+      ? () => getArtistRec(resourceForQuery.sanitizedLink)
       : resourceForQuery?.type === "track"
-        ? () => getTrackRec(resourceForQuery.id)
+        ? () => getTrackRec(resourceForQuery.sanitizedLink)
         : () => Promise.resolve({ type: "track", query: "", results: [] }); 
 
   return useQuery<RecommendationResponse>({
-    queryKey: resourceForQuery ? [resourceForQuery.type, resourceForQuery.id] : [],
+    queryKey: resourceForQuery ? [resourceForQuery.type, resourceForQuery.sanitizedLink] : [],
     queryFn: resourceForQuery ? queryFnHelp! : () => Promise.resolve([]),
     enabled: !!resourceForQuery // --> only runs if theres a resourceForQuery, also enables auto refetching
   })
@@ -92,7 +92,7 @@ export default function GeneratorPage() {
     }
     
     // runs getRecs implicitly
-    setResourceForQuery({type: linkType, id: id})
+    setResourceForQuery({type: linkType, sanitizedLink: sanitizedLink})
   }
 
   const { data, error, isLoading } = getRecs(resourceForQuery)
