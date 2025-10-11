@@ -90,6 +90,10 @@ func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 		return SpotifyResponseObj{}, fmt.Errorf("error reading body from Spotify API: %s", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return SpotifyResponseObj{}, fmt.Errorf("spotify API returned %d: %s", resp.StatusCode, string(body))
+	}
+
 	log.Printf("Spotify raw response: %s", string(body))
 	var response SpotifyResponseObj
 	switch decider {

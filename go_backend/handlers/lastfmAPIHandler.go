@@ -423,16 +423,20 @@ func httpReqHelper(httpReq *http.Request, varForUnmarshal any) error {
 	if err != nil {
 		return fmt.Errorf("error making http client/sending req: %w", err)
 	}
-
 	defer resp.Body.Close()
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("error reading resp body: %w", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("non-200 response from API: %d, body: %s", resp.StatusCode, string(body))
+	}
+
 	err = json.Unmarshal(body, varForUnmarshal)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling resp body: %w", err)
+		return fmt.Errorf("error unmarshalling resp body: %w, body: %s", err, string(body))
 	}
 
 	return nil
