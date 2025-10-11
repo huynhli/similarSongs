@@ -1,9 +1,7 @@
-import { Link } from 'react-router-dom'
 import '../App.css'
 import { AnimatePresence, easeInOut, motion } from "motion/react"
-import { useContext, useState } from 'react'
-import { delay } from 'motion'
-import MotionLink from './MotionLink'
+import { useState } from 'react'
+import MotionHashLink from './MotionHashLink'
 
 function Header() {
     // window location href is for new tab (re-renders otherwise) -> also for scripts. if not script, use <a target="_blank"></a>
@@ -36,9 +34,10 @@ function Header() {
                 h-20 w-auto mx-[4%] mt-[10px] pb-[10px]
                 border-b-1 border-white'
         >
-            <MotionLink
+            <MotionHashLink
                 className='relative flex flex-row h-full text-4xl text-white font-electrolize' 
                 to='/'
+                smooth
                 whileHover="hover" 
                 initial="initial"
                 animate="animate"
@@ -63,7 +62,7 @@ function Header() {
                         variants={ongsVariant}
                     >ongs</motion.div>
                 </motion.div>
-            </MotionLink>
+            </MotionHashLink>
             
             <button className='flex justify-center items-center flex-col w-20 h-20 group relative'
                 onClick={() => setNavBarOpen(prev => !prev)}
@@ -83,45 +82,49 @@ function Header() {
                         transition={{y: {duration: 0.2, ease: "easeInOut"}, opacity: {duration: 0.3, ease: "easeIn"}}}
                         exit={{}}
                     >
-                        <MotionLink className='flex-1 px-14 mb-2 mt-20 flex items-center hover:font-serif hover:italic text-zinc-300 hover:text-white'
+                        <MotionHashLink className='flex-1 px-14 mb-2 mt-20 flex items-center hover:font-serif hover:italic text-zinc-300 hover:text-white'
                             onClick={() => (setNavBarOpen(prev => !prev))}
                             to='/recsGenerator'
+                            smooth
                             initial={{ y: -100, opacity: 0}}
                             animate={{ y: 0, opacity: 1}}
                             transition={{duration: 0.3, ease: easeInOut, delay: 0.3 }}
                         >
                             <h1>Recommend a song!</h1>
-                        </MotionLink>
+                        </MotionHashLink>
 
-                        <MotionLink className='z-10 flex-1 px-14 my-2 flex items-center hover:font-serif hover:italic text-zinc-300 hover:text-white'
+                        <MotionHashLink className='z-10 flex-1 px-14 my-2 flex items-center hover:font-serif hover:italic text-zinc-300 hover:text-white'
                             onClick={() => (setNavBarOpen(prev => !prev))}
                             to='/#About'
+                            smooth
                             initial={{ y: -100, opacity: 0}}
                             animate={{ y: 0, opacity: 1}}
                             transition={{duration: 0.3, ease: easeInOut, delay: 0.35 }}
                         >
                             About
-                        </MotionLink>
+                        </MotionHashLink>
 
-                        <MotionLink className='z-10 flex-1 px-14 my-2 flex items-center hover:font-serif hover:italic text-zinc-300 hover:text-white'
+                        <MotionHashLink className='z-10 flex-1 px-14 my-2 flex items-center hover:font-serif hover:italic text-zinc-300 hover:text-white'
                             onClick={() => (setNavBarOpen(prev => !prev))}
                             to='/#Features'
+                            smooth
                             initial={{ y: -100, opacity: 0}}
                             animate={{ y: 0, opacity: 1}}
                             transition={{duration: 0.3, ease: easeInOut, delay: 0.4 }}
                         >
                             Features
-                        </MotionLink>
+                        </MotionHashLink>
 
-                        <MotionLink className='z-10 flex-1 px-14 my-2 flex items-center hover:font-serif hover:italic text-zinc-300 hover:text-white'
+                        <MotionHashLink className='z-10 flex-1 px-14 my-2 flex items-center hover:font-serif hover:italic text-zinc-300 hover:text-white'
                             onClick={() => (setNavBarOpen(prev => !prev))}
                             to='/#Contacts'
+                            smooth
                             initial={{ y: -100, opacity: 0}}
                             animate={{ y: 0, opacity: 1}}
                             transition={{duration: 0.3, ease: easeInOut, delay: 0.45 }}
                         >
                             Contacts
-                        </MotionLink>
+                        </MotionHashLink>
                     </motion.nav>
                 </AnimatePresence>
             }

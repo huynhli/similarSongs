@@ -17,6 +17,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.2.0",
+    "react-router-hash-link": "^2.4.3",
     "tailwindcss": "^4.0.9"
   },
   "devDependencies": {
@@ -24,6 +25,7 @@
     "@types/react": "^19.0.9",
     "@types/react-dom": "^19.0.3",
     "@types/react-router-dom": "^5.3.3",
+    "@types/react-router-hash-link": "^2.4.9",
     "@vitejs/plugin-react-swc": "^3.5.0",
     "eslint": "^9.19.0",
     "eslint-plugin-react-hooks": "^5.0.0",
