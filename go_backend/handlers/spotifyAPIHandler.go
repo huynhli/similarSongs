@@ -25,7 +25,7 @@ type Album struct {
 type Track struct {
 	Name    string   `json:"name"`
 	Artists []Artist `json:"artists"`
-	// Album   Album    `json:"album"`
+	Album   Album    `json:"album"`
 }
 
 type SpotifyResponseObj struct {
@@ -121,7 +121,7 @@ func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 			return SpotifyResponseObj{}, fmt.Errorf("error unmarshalling track from Spotify API: %s", err)
 		}
 		response.ArtistName = t.Artists[0].Name
-		// response.AlbumName = &t.Album.Name
+		response.AlbumName = &t.Album.Name
 		response.TrackName = &t.Name
 	}
 
