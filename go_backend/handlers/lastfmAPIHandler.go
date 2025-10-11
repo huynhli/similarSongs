@@ -127,7 +127,6 @@ func GetLastFMTags(response SpotifyResponseObj) ([]string, error) {
 			// 	"&format=json",
 			nil,
 		)
-		fmt.Print("request: ", req)
 		if err != nil {
 			return nil, fmt.Errorf("error making http request for getting lastfm tags for track: %w", err)
 		}
