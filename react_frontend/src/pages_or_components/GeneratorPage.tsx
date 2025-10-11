@@ -92,7 +92,7 @@ export default function GeneratorPage() {
     }
     
     // runs getRecs implicitly
-    setResourceForQuery({type: linkType, sanitizedLink: sanitizedLink})
+    setResourceForQuery({type: linkType, sanitizedLink: encodeURIComponent(sanitizedLink)})
   }
 
   const { data, error, isLoading } = getRecs(resourceForQuery)
