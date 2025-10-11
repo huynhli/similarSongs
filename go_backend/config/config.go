@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -17,9 +16,7 @@ var (
 
 func LoadConfig() {
 	// Load environment variables from .env file
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	_ = godotenv.Load()
 
 	// Set config variables from environment variables
 	SpotifyClientID = os.Getenv("SPOTIFY_CLIENT_ID")
