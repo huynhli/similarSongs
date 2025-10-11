@@ -17,10 +17,10 @@ type RecommendationWithArtist struct {
 }
 
 type RecommendationResponse struct {
-	Type    string      `json:"type"`    // "track", "album", or "artist"
-	Query   string      `json:"query"`   // the tag or search term
-	Results interface{} `json:"results"` // can be []RecommendationWithArtist or map[string][]RecommendationWithArtist
-	Error   string      `json:"error,omitempty"`
+	Type    string                                `json:"type"`    // "track", "album", or "artist"
+	Query   string                                `json:"query"`   // the tag or search term
+	Results map[string][]RecommendationWithArtist `json:"results"` // can be []RecommendationWithArtist or map[string][]RecommendationWithArtist
+	Error   string                                `json:"error,omitempty"`
 }
 
 type LastFMTrackSimilar struct {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"go_backend/config"
 	"go_backend/handlers"
 	"go_backend/routes"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGetLastFMTrackRoute(t *testing.T) {
@@ -18,15 +18,39 @@ func TestGetLastFMTrackRoute(t *testing.T) {
 	app := fiber.New()
 	app.Get("/test", routes.GetLastFMTrack)
 
-	req := httptest.NewRequest("GET", "/test?link=https://open.spotify.com/artist/6vWDO969PvNqNYHIOW5v0m?si=i8pS1ntxTF-tCTV1rItksw", nil)
+	req := httptest.NewRequest("GET", "/test?link=https://open.spotify.com/artist/3l0CmX0FuQjFxr8SK7Vqag?si=JZ_FrvKmTJ6waWoL8J_peQ", nil)
 	resp, err := app.Test(req, -1)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	body, _ := io.ReadAll(resp.Body)
+	assert.Contains(t, string(body), `"artistName"`)
+
+	var rec handlers.RecommendationResponse
+	_ = json.Unmarshal(body, &rec)
+
+	assert.Equal(t, "Space Song", rec.Results["indie pop"][0].RecName)
+	assert.Equal(t, "Beach House", rec.Results["indie pop"][0].ArtistName)
+	assert.Equal(t, "Sofia", rec.Results["indie pop"][1].RecName)
+	assert.Equal(t, "Clairo", rec.Results["indie pop"][1].ArtistName)
+	assert.Equal(t, "Buzzcut Season", rec.Results["indie pop"][2].RecName)
+	assert.Equal(t, "Lorde", rec.Results["indie pop"][2].ArtistName)
+
+	assert.Equal(t, "Bags", rec.Results["bedroom pop"][0].RecName)
+	assert.Equal(t, "Clairo", rec.Results["bedroom pop"][0].ArtistName)
+	assert.Equal(t, "Pretty Girl", rec.Results["bedroom pop"][1].RecName)
+	assert.Equal(t, "Clairo", rec.Results["bedroom pop"][1].ArtistName)
+	assert.Equal(t, "Bad Habit", rec.Results["bedroom pop"][2].RecName)
+	assert.Equal(t, "Steve Lacy", rec.Results["bedroom pop"][2].ArtistName)
+
+	assert.Equal(t, "Apocalypse", rec.Results["dream pop"][0].RecName)
+	assert.Equal(t, "Cigarettes After Sex", rec.Results["dream pop"][0].ArtistName)
+	assert.Equal(t, "Space Song", rec.Results["dream pop"][1].RecName)
+	assert.Equal(t, "Beach House", rec.Results["dream pop"][1].ArtistName)
+	assert.Equal(t, "The Subway", rec.Results["dream pop"][2].RecName)
+	assert.Equal(t, "Chappell Roan", rec.Results["dream pop"][2].ArtistName)
 
 	// Check that the JSON contains the expected fields
-	assert.Contains(t, string(body), `"artistName"`)
 	// assert.Contains(t, string(body), `"track"`)
 	// assert.Contains(t, string(body), `"album"`)
 }
@@ -74,11 +98,8 @@ func TestLastFMSimilarTracksBuiltin(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
 
-	result, ok := resp.Results.(map[string][]handlers.RecommendationWithArtist)
-	require.True(t, ok, "expected map[string][]RecommendationWithArtist")
-
-	assert.Equal(t, "Strong Enough", result["similar tracks"][0].RecName)
-	assert.Equal(t, "Cher", result["similar tracks"][0].ArtistName)
+	assert.Equal(t, "Strong Enough", resp.Results["similar tracks"][0].RecName)
+	assert.Equal(t, "Cher", resp.Results["similar tracks"][0].ArtistName)
 
 }
 
@@ -88,10 +109,7 @@ func TestLastFMSimilarArtistsBuiltin(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
 
-	result, ok := resp.Results.(map[string][]handlers.RecommendationWithArtist)
-	require.True(t, ok, "expected map[string][]RecommendationWithArtist")
-
-	assert.Equal(t, "Sonny & Cher", result["similar artists"][0].RecName)
+	assert.Equal(t, "Sonny & Cher", resp.Results["similar artists"][0].RecName)
 }
 
 func TestLastFMTracksByTag(t *testing.T) {
@@ -101,11 +119,8 @@ func TestLastFMTracksByTag(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
 
-	results, ok := resp.Results.(map[string][]handlers.RecommendationWithArtist)
-	require.True(t, ok, "expected map[string][]RecommendationWithArtist")
-
-	assert.Equal(t, "September", results[tag[0]][0].RecName)
-	assert.Equal(t, "Earth, Wind & Fire", results[tag[0]][0].ArtistName)
+	assert.Equal(t, "September", resp.Results[tag[0]][0].RecName)
+	assert.Equal(t, "Earth, Wind & Fire", resp.Results[tag[0]][0].ArtistName)
 }
 
 func TestLastFMAlbumByTag(t *testing.T) {
@@ -115,11 +130,8 @@ func TestLastFMAlbumByTag(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
 
-	results, ok := resp.Results.(map[string][]handlers.RecommendationWithArtist)
-	require.True(t, ok, "expected map[string][]RecommendationWithArtist")
-
-	assert.Equal(t, "Off the Wall", results[tag[0]][0].RecName)
-	assert.Equal(t, "Michael Jackson", results[tag[0]][0].ArtistName)
+	assert.Equal(t, "Off the Wall", resp.Results[tag[0]][0].RecName)
+	assert.Equal(t, "Michael Jackson", resp.Results[tag[0]][0].ArtistName)
 }
 
 func TestLastFMArtistByTag(t *testing.T) {
@@ -129,10 +141,7 @@ func TestLastFMArtistByTag(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
 
-	results, ok := resp.Results.(map[string][]handlers.RecommendationWithArtist)
-	require.True(t, ok, "expected map[string][]RecommendationWithArtist")
-
-	assert.Equal(t, "ABBA", results[tag[0]][0].RecName)
+	assert.Equal(t, "ABBA", resp.Results[tag[0]][0].RecName)
 }
 
 func TestLastFMTrackTags(t *testing.T) {
@@ -170,14 +179,14 @@ func TestLastFMAlbumTags(t *testing.T) {
 func TestLastFMArtistTags(t *testing.T) {
 	config.LoadConfig()
 	testResp := handlers.SpotifyResponseObj{
-		ArtistName: "Cher",
+		ArtistName: "Clairo",
 	}
 	tags, err := handlers.GetLastFMTags(testResp)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, tags)
-	assert.Equal(t, "pop", tags[0])
-	assert.Equal(t, "female vocalists", tags[1])
-	assert.Equal(t, "80s", tags[2])
+	assert.Equal(t, "indie pop", tags[0])
+	assert.Equal(t, "bedroom pop", tags[1])
+	assert.Equal(t, "dream pop", tags[2])
 }
 
 // func TestSpotifyInNameOutAlbum(t *testing.T) {
