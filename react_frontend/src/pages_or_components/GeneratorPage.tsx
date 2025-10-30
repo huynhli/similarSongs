@@ -3,6 +3,14 @@ import '../App.css'
 import { getAlbumRec, getArtistRec, getTrackRec } from './TanstackHelper';
 import { useQuery } from '@tanstack/react-query'
 
+// const queryClient = new QueryClient({
+//   defaultOptions: {
+//     queries: {
+//       gcTime: 1000 * 60 * 60 * 24, // 24 hours
+//     },
+//   },
+// })
+
 type RecommendationWithArtist = {
   recName: string;
   artistName: string;
@@ -25,11 +33,11 @@ type resourceForQueryType = {
 function getRecs(resourceForQuery: resourceForQueryType | null) {
   const queryFnHelp = resourceForQuery?.type === "album"
     ? () => getAlbumRec(resourceForQuery.id)
-    : resourceForQuery?.type === "artist"
-      ? () => getArtistRec(resourceForQuery.id)
-      : resourceForQuery?.type === "track"
-        ? () => getTrackRec(resourceForQuery.id)
-        : () => Promise.resolve({ type: "track", query: "", results: [] }); 
+  : resourceForQuery?.type === "artist"
+    ? () => getArtistRec(resourceForQuery.id)
+  : resourceForQuery?.type === "track"
+    ? () => getTrackRec(resourceForQuery.id)
+  :  () => Promise.resolve({ type: "track", query: "", results: [] }); 
 
   return useQuery<RecommendationResponse>({
     queryKey: resourceForQuery ? [resourceForQuery.type, resourceForQuery.id] : [],
@@ -39,13 +47,18 @@ function getRecs(resourceForQuery: resourceForQueryType | null) {
 }
 
 export default function GeneratorPage() {
+  // useSearchParams for query filtering, pagination, anything that edits teh query
+  // const [searchParams, setSearchParams] = useSearchParams()
+  // const linkQuery = searchParams.get('link')
+
   const [resourceForQuery, setResourceForQuery] = useState<resourceForQueryType | null>(null)
   const [link, setLink] = useState("");
-
+  // TODO impement debouncing
   const handleLinkChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setLink(event.target.value);
   }
 
+  // on page load, load link query if there
   useEffect(() => {
     // simple + stateless
     const url = new URLSearchParams(window.location.search)
@@ -56,8 +69,10 @@ export default function GeneratorPage() {
       setLink(decodedLink) // change box text, and state
       sanitizeValidateAndBackendCall(decodedLink) // on page load, use decoded link and not state, bc state updates async
     }
+    // TODO does this need a return 
   }, [])
 
+  // on submit link
   const handleSubmit = (e: React.FormEvent) => {
     e?.preventDefault()
     sanitizeValidateAndBackendCall(link)
@@ -66,6 +81,7 @@ export default function GeneratorPage() {
   const sanitizeLink = (link : string) : [string, string | null] => {
     if (!link) return [link, "No string entered"]
     const trimmedLowerLink = link.trim().toLowerCase()
+    // must be a spotify link
     if (!trimmedLowerLink.startsWith('https://open.spotify.com/')) {
       return [trimmedLowerLink, 'Not a valid spotify link: Does not start with "https://open.spotify.com/"']
     }
@@ -75,6 +91,8 @@ export default function GeneratorPage() {
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const sanitizeValidateAndBackendCall = (decodedLink : string) => {
+    // fully sanitize/validate 
+    // TODO add loading anim for checking string vs loading anim for requesting data
     const [sanitizedLink, error] = sanitizeLink(decodedLink)
     if (error) {
       setValidationError(error)
@@ -84,6 +102,8 @@ export default function GeneratorPage() {
 
     console.log('Link passed valididation: ' + sanitizedLink)
     console.log('Requesting info...')
+    // backend request, display value/error
+    console.log(sanitizedLink?.split('/'))
     const splitSanitizedLink = sanitizedLink?.split('/')
     const id = splitSanitizedLink[4] 
     const linkType = splitSanitizedLink[3]
@@ -99,18 +119,13 @@ export default function GeneratorPage() {
 
   const [ tabIndexes, setTabIndexes ] = useState<number[]>([0, 0, 0])
 
-  // Flatten results for easier mapping
-  let recs: RecommendationWithArtist[] = []
-  if (data?.results) {
-    if (Array.isArray(data.results)) {
-      recs = data.results
-    } else {
-      // results is Record<string, RecommendationWithArtist[]>
-      recs = Object.values(data.results).flat()
-    }
-  }
+  // prepare rec groups for display
+  const recGroups: Record<string, RecommendationWithArtist[]> = Array.isArray(data?.results)
+    ? { All: data.results } // flat array -> "All" tag
+    : data?.results || {}; // already a Record, use as-is
 
   return (
+    // TODO make page not scrollable
     <section className='min-h-[100vh] mb-2 w-full flex flex-col justify-center items-center'>
         
         {/* Input */}
@@ -133,69 +148,109 @@ export default function GeneratorPage() {
             <div className='my-2 flex'>{validationError}</div>
           )}
         </div>
-
-        {/* Results */}
+        
+        {/* results */}
         {resourceForQuery && (
           <div className='max-w-1000 w-[95%] grow min-mx-2 pb-2 border-b-1 border-white'>
-            
-            {/* Loading/Error/No Results */}
-            {isLoading && (
-              <div className='h-full flex justify-center items-center text-white'>Loading recommendations...</div>
-            )}
-            {error && (
-              <div className='h-full flex justify-center items-center text-red-500'>
-                {error instanceof Error ? error.message : "An error occurred while fetching recommendations"}
+            <div className='h-full flex flex-col w-full'>
+              
+              {/* Tab Headers */}
+              <div className='h-20 flex justify-center'>
+                <button className={`flex-1 text-center hover:bg-black active:bg-[#222a3d] ${tabIndexes[0] === 0 ? "bg-[#222a3d] border-white  border-r-1" : "bg-[#090d14] border-b-1 border-gray-600 border-b-white"} rounded-t-2xl flex items-center justify-center border-t-1 border-l-1`}
+                  onClick={() => setTabIndexes(prev => [0, prev[1], prev[2]])}
+                >
+                  LastFM
+                </button>
+                <button className={`flex-1 text-center hover:bg-black active:bg-[#222a3d] ${tabIndexes[0] === 1 ? "bg-[#222a3d] border-white  border-l-1" : "bg-[#090d14] border-b-1 border-gray-600 border-b-white"} rounded-t-2xl flex items-center justify-center border-t-1 border-r-1`}
+                  onClick={() => setTabIndexes(prev => [1, prev[1], prev[2]])}
+                >
+                  Explore
+                </button>
               </div>
-            )}
-            {!isLoading && !error && recs.length === 0 && (
-              <div className='h-full flex justify-center items-center text-white'>0 recommendations found</div>
-            )}
 
-            {/* Only render tabs and recs if data is loaded */}
-            {!isLoading && !error && recs.length > 0 && (
-              <div className='h-full flex flex-col w-full'>
-                {/* Tab Headers */}
-                <div className='h-20 flex justify-center'>
-                  <button className={`flex-1 text-center hover:bg-black active:bg-[#222a3d] ${tabIndexes[0] === 0 ? "bg-[#222a3d] border-white  border-r-1" : "bg-[#090d14] border-b-1 border-gray-600 border-b-white"} rounded-t-2xl flex items-center justify-center border-t-1 border-l-1`}
-                    onClick={() => setTabIndexes(prev => [0, prev[1], prev[2]])}
-                  >
-                    LastFM
-                  </button>
-                  <button className={`flex-1 text-center hover:bg-black active:bg-[#222a3d] ${tabIndexes[0] === 1 ? "bg-[#222a3d] border-white  border-l-1" : "bg-[#090d14] border-b-1 border-gray-600 border-b-white"} rounded-t-2xl flex items-center justify-center border-t-1 border-r-1`}
-                    onClick={() => setTabIndexes(prev => [1, prev[1], prev[2]])}
-                  >
-                    Explore
-                  </button>
-                </div>
-
-                {/* Buttons */}
-                <div className='w-full flex justify-around bg-[#222a3d] border-x-1 border-white'>
-                  {/* ... keep your button JSX here ... */}
-                </div>
-
-                {/* Spacer */}
-                <div className='h-5 bg-[#222a3d] border-x-1 border-white'/>
-
-                {/* Recommendation Grid */}
-                <div className='grid grid-cols-3 items-center justify-items-center gap-2 w-full bg-[#222a3d] border-x-1 border-white px-2'>
-                  {recs.map((rec, i) => (
-                    <div key={i} className={`flex flex-col items-center shadow-md ${window.innerWidth < 500 ? "w-full" : "w-[80%]"} ${tabIndexes[1] === 2 || tabIndexes[1] === 3 ? "h-30" : "h-50"}`}>
-                      {/* artist cases */}
-                      {tabIndexes[1] === 2 || tabIndexes[1] === 3 ? 
-                        <div className='flex flex-4 justify-center items-center rounded-xl border-white border-1 text-center w-full h-full bg-[#3a486b] pt-1'>
-                          {rec.artistName}
-                        </div>
-                      :
-                        <>
-                          <div className='flex flex-5 justify-center items-end rounded-t-xl border-white border-t-1 border-x-1 text-center w-full h-full bg-[#415178] pb-1'>{rec.recName}</div>
-                          <div className='flex flex-4 justify-center items-start rounded-b-xl border-white border-b-1 border-x-1 text-center w-full h-full bg-[#3a486b] pt-1'>{rec.artistName}</div>
-                        </>
-                      }
-                    </div>
-                  ))}
-                </div>
+              {/* buttons */}
+              <div className='w-full flex justify-around bg-[#222a3d] border-x-1 border-white'>
+                {tabIndexes[0] === 0 ? 
+                  <>
+                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 0 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 0, prev[2]])}
+                    >
+                      Track Recs
+                    </button>
+                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 1 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 1, prev[2]])}
+                    >
+                      Similar Tracks
+                    </button>
+                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 2 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 2, prev[2]])}
+                    >
+                      Artist Recs
+                    </button>
+                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 3 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 3, prev[2]])}
+                    >
+                      Similar Artists
+                    </button>
+                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 4 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 4, prev[2]])}
+                    >
+                      Album Recs
+                    </button>
+                  </>
+                : 
+                  <>
+                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[2] === 0 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], 0])}
+                    >
+                      Acoustic Brainz Recs
+                    </button>
+                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[2] === 1 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], 1])}
+                    >
+                      Discogs Recs
+                    </button>
+                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[2] === 2 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], 2])}
+                    >
+                      Deezer + Discogs Recs
+                    </button>
+                  </>
+                }
               </div>
-            )}
+              
+              {/* Spacer */}
+              <div className='h-5 bg-[#222a3d] border-x-1 border-white'/>
+
+              {/* Recs */}
+              {Object.entries(recGroups).map(([tag, recs], groupIndex) => (
+                <div key={tag} className='w-full mb-6'>
+                  {/* Tag Header */}
+                  <h3 className='text-white mb-2'>{tag}</h3>
+
+                  {/* 3-column grid for each group */}
+                  <div className='grid grid-cols-3 items-center justify-items-center gap-2 w-full bg-[#222a3d] border-x-1 border-white px-2'>
+                    {recs.map((rec, i) => (
+                      <div key={i} className={`flex flex-col items-center shadow-md ${window.innerWidth < 500 ? "w-full" : "w-[80%]"} ${tabIndexes[1] === 2 || tabIndexes[1] === 3 ? "h-30" : "h-50"}`}>
+                        
+                        {/* artist cases */}
+                        {tabIndexes[1] === 2 || tabIndexes[1] === 3 ? 
+                          <>
+                            <div className='flex flex-4 justify-center items-center rounded-xl border-white border-1 text-center w-full h-full bg-[#3a486b] pt-1'>{rec.artistName}</div>
+                          </>
+                        :
+                          <>
+                            <div className='flex flex-5 justify-center items-end rounded-t-xl border-white border-t-1 border-x-1 text-center w-full h-full bg-[#415178] pb-1'>{rec.recName}</div>
+                            <div className='flex flex-4 justify-center items-start rounded-b-xl border-white border-b-1 border-x-1 text-center w-full h-full bg-[#3a486b] pt-1'>{rec.artistName}</div>
+                          </>
+                        }
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+            </div>
           </div>
         )}
     </section>
