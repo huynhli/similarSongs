@@ -1,0 +1,34 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - endpointsAndHandlers
+  pull_request:
+    branches:
+      - endpointsAndHandlers
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+
+      - name: Move to backend, install dependencies
+        working-directory: backend
+        run: go mod tidy
+
+      - name: Run linter
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run
+
+      - name: Run tests
+        run: go test ./integration -v
