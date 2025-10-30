@@ -5,11 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"go_backend/config"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/huynhli/similarsongs/go_backend/config"
 )
 
 type Artist struct {
@@ -24,7 +25,7 @@ type Album struct {
 type Track struct {
 	Name    string   `json:"name"`
 	Artists []Artist `json:"artists"`
-	// Album   Album    `json:"album"`
+	Album   Album    `json:"album"`
 }
 
 type SpotifyResponseObj struct {
@@ -89,6 +90,10 @@ func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 		return SpotifyResponseObj{}, fmt.Errorf("error reading body from Spotify API: %s", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return SpotifyResponseObj{}, fmt.Errorf("spotify API returned %d: %s", resp.StatusCode, string(body))
+	}
+
 	log.Printf("Spotify raw response: %s", string(body))
 	var response SpotifyResponseObj
 	switch decider {
@@ -116,7 +121,7 @@ func SpotifyInNameOut(link string) (SpotifyResponseObj, error) {
 			return SpotifyResponseObj{}, fmt.Errorf("error unmarshalling track from Spotify API: %s", err)
 		}
 		response.ArtistName = t.Artists[0].Name
-		// response.AlbumName = &t.Album.Name
+		response.AlbumName = &t.Album.Name
 		response.TrackName = &t.Name
 	}
 

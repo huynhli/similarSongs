@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"go_backend/handlers"
+	"github.com/huynhli/similarsongs/go_backend/handlers"
 
 	"github.com/gofiber/fiber/v2"
 )

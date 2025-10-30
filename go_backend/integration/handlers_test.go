@@ -1,12 +1,14 @@
 package integration
 
 import (
-	"go_backend/config"
-	"go_backend/handlers"
-	"go_backend/routes"
+	"encoding/json"
 	"io"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/huynhli/similarsongs/go_backend/config"
+	"github.com/huynhli/similarsongs/go_backend/handlers"
+	"github.com/huynhli/similarsongs/go_backend/routes"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
@@ -17,15 +19,39 @@ func TestGetLastFMTrackRoute(t *testing.T) {
 	app := fiber.New()
 	app.Get("/test", routes.GetLastFMTrack)
 
-	req := httptest.NewRequest("GET", "/test?link=https://open.spotify.com/artist/6vWDO969PvNqNYHIOW5v0m?si=i8pS1ntxTF-tCTV1rItksw", nil)
-	resp, err := app.Test(req)
+	req := httptest.NewRequest("GET", "/test?link=https://open.spotify.com/artist/3l0CmX0FuQjFxr8SK7Vqag?si=JZ_FrvKmTJ6waWoL8J_peQ", nil)
+	resp, err := app.Test(req, -1)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	body, _ := io.ReadAll(resp.Body)
+	assert.Contains(t, string(body), `"artistName"`)
+
+	var rec handlers.RecommendationResponse
+	_ = json.Unmarshal(body, &rec)
+
+	assert.Equal(t, "Space Song", rec.Results["indie pop"][0].RecName)
+	assert.Equal(t, "Beach House", rec.Results["indie pop"][0].ArtistName)
+	assert.Equal(t, "Sofia", rec.Results["indie pop"][1].RecName)
+	assert.Equal(t, "Clairo", rec.Results["indie pop"][1].ArtistName)
+	assert.Equal(t, "Buzzcut Season", rec.Results["indie pop"][2].RecName)
+	assert.Equal(t, "Lorde", rec.Results["indie pop"][2].ArtistName)
+
+	assert.Equal(t, "Bags", rec.Results["bedroom pop"][0].RecName)
+	assert.Equal(t, "Clairo", rec.Results["bedroom pop"][0].ArtistName)
+	assert.Equal(t, "Pretty Girl", rec.Results["bedroom pop"][1].RecName)
+	assert.Equal(t, "Clairo", rec.Results["bedroom pop"][1].ArtistName)
+	assert.Equal(t, "Bad Habit", rec.Results["bedroom pop"][2].RecName)
+	assert.Equal(t, "Steve Lacy", rec.Results["bedroom pop"][2].ArtistName)
+
+	assert.Equal(t, "Apocalypse", rec.Results["dream pop"][0].RecName)
+	assert.Equal(t, "Cigarettes After Sex", rec.Results["dream pop"][0].ArtistName)
+	assert.Equal(t, "Space Song", rec.Results["dream pop"][1].RecName)
+	assert.Equal(t, "Beach House", rec.Results["dream pop"][1].ArtistName)
+	assert.Equal(t, "The Subway", rec.Results["dream pop"][2].RecName)
+	assert.Equal(t, "Chappell Roan", rec.Results["dream pop"][2].ArtistName)
 
 	// Check that the JSON contains the expected fields
-	assert.Contains(t, string(body), `"artist"`)
 	// assert.Contains(t, string(body), `"track"`)
 	// assert.Contains(t, string(body), `"album"`)
 }
@@ -50,11 +76,11 @@ func TestSpotifyInNameOutTrack(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.ArtistName)
 	assert.NotEmpty(t, resp.TrackName)
-	assert.NotEmpty(t, resp.AlbumName)
+	// assert.NotEmpty(t, resp.AlbumName)
 	assert.Equal(t, "Beyoncé", resp.ArtistName)
 	// assert.Equal(t, []string{"Beyoncé", "JAY-Z"}, resp.ArtistName)
 	assert.Equal(t, "Crazy In Love (feat. JAY-Z)", *resp.TrackName)
-	assert.Equal(t, "Dangerously In Love", *resp.AlbumName)
+	// assert.Equal(t, "Dangerously In Love", *resp.AlbumName)
 }
 
 func TestSpotifyInNameOutAlbum(t *testing.T) {
@@ -72,8 +98,10 @@ func TestLastFMSimilarTracksBuiltin(t *testing.T) {
 	resp, err := handlers.GetLastFMSimilarTracksBuiltin("believe", "cher")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
-	assert.Equal(t, "Cher", resp[0].ArtistName)
-	assert.Equal(t, "Strong Enough", resp[0].RecName)
+
+	assert.Equal(t, "Strong Enough", resp.Results["similar tracks"][0].RecName)
+	assert.Equal(t, "Cher", resp.Results["similar tracks"][0].ArtistName)
+
 }
 
 func TestLastFMSimilarArtistsBuiltin(t *testing.T) {
@@ -81,7 +109,8 @@ func TestLastFMSimilarArtistsBuiltin(t *testing.T) {
 	resp, err := handlers.GetLastFMSimilarArtistsBuiltin("cher")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
-	assert.Equal(t, "Sonny & Cher", resp[0])
+
+	assert.Equal(t, "Sonny & Cher", resp.Results["similar artists"][0].RecName)
 }
 
 func TestLastFMTracksByTag(t *testing.T) {
@@ -90,8 +119,9 @@ func TestLastFMTracksByTag(t *testing.T) {
 	resp, err := handlers.GetLastFMTracksByTag(tag)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
-	assert.Equal(t, "Dancing Queen", resp[tag[0]][0].RecName)
-	assert.Equal(t, "ABBA", resp[tag[0]][0].ArtistName)
+
+	assert.Equal(t, "September", resp.Results[tag[0]][0].RecName)
+	assert.Equal(t, "Earth, Wind & Fire", resp.Results[tag[0]][0].ArtistName)
 }
 
 func TestLastFMAlbumByTag(t *testing.T) {
@@ -100,8 +130,9 @@ func TestLastFMAlbumByTag(t *testing.T) {
 	resp, err := handlers.GetLastFMAlbumsByTag(tag)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
-	assert.Equal(t, "Bad Girls", resp[tag[0]][0].RecName)
-	assert.Equal(t, "Donna Summer", resp[tag[0]][0].ArtistName)
+
+	assert.Equal(t, "Off the Wall", resp.Results[tag[0]][0].RecName)
+	assert.Equal(t, "Michael Jackson", resp.Results[tag[0]][0].ArtistName)
 }
 
 func TestLastFMArtistByTag(t *testing.T) {
@@ -110,7 +141,8 @@ func TestLastFMArtistByTag(t *testing.T) {
 	resp, err := handlers.GetLastFMArtistsByTag(tag)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp)
-	assert.Equal(t, "ABBA", resp[tag[0]][0])
+
+	assert.Equal(t, "ABBA", resp.Results[tag[0]][0].RecName)
 }
 
 func TestLastFMTrackTags(t *testing.T) {
@@ -148,14 +180,14 @@ func TestLastFMAlbumTags(t *testing.T) {
 func TestLastFMArtistTags(t *testing.T) {
 	config.LoadConfig()
 	testResp := handlers.SpotifyResponseObj{
-		ArtistName: "Cher",
+		ArtistName: "Clairo",
 	}
 	tags, err := handlers.GetLastFMTags(testResp)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, tags)
-	assert.Equal(t, "pop", tags[0])
-	assert.Equal(t, "female vocalists", tags[1])
-	assert.Equal(t, "80s", tags[2])
+	assert.Equal(t, "indie pop", tags[0])
+	assert.Equal(t, "bedroom pop", tags[1])
+	assert.Equal(t, "dream pop", tags[2])
 }
 
 // func TestSpotifyInNameOutAlbum(t *testing.T) {

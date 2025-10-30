@@ -6,9 +6,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"go_backend/config"
-	"go_backend/cors"
-	"go_backend/routes"
+	"github.com/huynhli/similarsongs/go_backend/config"
+	"github.com/huynhli/similarsongs/go_backend/cors"
+	"github.com/huynhli/similarsongs/go_backend/routes"
 )
 
 func init() {
