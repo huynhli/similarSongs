@@ -1,26 +1,26 @@
 import axiosHelper from "./AxiosHelper"
 
-export const getTrackRec = async (id : string) => {
-    const res = await axiosHelper.get(`/lastfm`+`/track`+`/${id}`)
+export const getTrackRec = async (link : string) => {
+    const res = await axiosHelper.get(`/lastfm`+`/track`, { params: { link: link }})
     return res.data
 }
 
-export const getTrackSimilarRec = async (id : string) => {
-    const res = await axiosHelper.get(`/lastfm`+`/track`+`/${id}`)
+export const getTrackSimilarRec = async (link : string) => {
+    const res = await axiosHelper.get(`/lastfm`+`/track`, { params: { link: link }})
     return res.data
 }
 
-export const getArtistRec = async (id : string) => {
-    const res = await axiosHelper.get(`/lastfm`+`/artist`+`/${id}`)
+export const getArtistRec = async (link : string) => {
+    const res = await axiosHelper.get(`/lastfm`+`/artist`, { params: { link: link }})
     return res.data
 }
 
-export const getArtistSimilarRec = async (id : string) => {
-    const res = await axiosHelper.get(`/lastfm`+`/artist`+`/${id}`)
+export const getArtistSimilarRec = async (link : string) => {
+    const res = await axiosHelper.get(`/lastfm`+`/artist`, { params: { link: link }})
     return res.data
 }
 
-export const getAlbumRec = async (id : string) => {
-    const res = await axiosHelper.get(`/lastfm`+`/album`+`/${id}`)
+export const getAlbumRec = async (link : string) => {
+    const res = await axiosHelper.get(`/lastfm`+`/album`, { params: { link: link }})
     return res.data
 }

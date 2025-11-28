@@ -1,15 +1,7 @@
-import { useEffect, useState } from 'react'
-import '../App.css'
+import { useEffect, useState } from 'react';
+import '../App.css';
 import { getAlbumRec, getArtistRec, getTrackRec } from './TanstackHelper';
-import { useQuery } from '@tanstack/react-query'
-
-// const queryClient = new QueryClient({
-//   defaultOptions: {
-//     queries: {
-//       gcTime: 1000 * 60 * 60 * 24, // 24 hours
-//     },
-//   },
-// })
+import { useQuery } from '@tanstack/react-query';
 
 type RecommendationWithArtist = {
   recName: string;
@@ -17,112 +9,98 @@ type RecommendationWithArtist = {
 };
 
 type RecommendationResponse = {
-  type: "track" | "album" | "artist";
+  type: 'track' | 'album' | 'artist';
   query: string;
-  results:
-    | Record<string, RecommendationWithArtist[]>
-    | RecommendationWithArtist[];
+  results: Record<string, RecommendationWithArtist[]> | RecommendationWithArtist[];
   error?: string;
 };
 
-type resourceForQueryType = {
-  type: string,
-  id: string,
-}
+type ResourceForQueryType = {
+  type: 'track' | 'album' | 'artist';
+  sanitizedLink: string;
+};
 
-function getRecs(resourceForQuery: resourceForQueryType | null) {
-  const queryFnHelp = resourceForQuery?.type === "album"
-    ? () => getAlbumRec(resourceForQuery.id)
-  : resourceForQuery?.type === "artist"
-    ? () => getArtistRec(resourceForQuery.id)
-  : resourceForQuery?.type === "track"
-    ? () => getTrackRec(resourceForQuery.id)
-  :  () => Promise.resolve({ type: "track", query: "", results: [] }); 
+function getRecs(resourceForQuery: ResourceForQueryType | null) {
+  const queryFn =
+    resourceForQuery?.type === 'album'
+      ? () => getAlbumRec(resourceForQuery.sanitizedLink)
+      : resourceForQuery?.type === 'artist'
+      ? () => getArtistRec(resourceForQuery.sanitizedLink)
+      : resourceForQuery?.type === 'track'
+      ? () => getTrackRec(resourceForQuery.sanitizedLink)
+      : () => Promise.resolve({ type: 'track', query: '', results: [] });
 
   return useQuery<RecommendationResponse>({
-    queryKey: resourceForQuery ? [resourceForQuery.type, resourceForQuery.id] : [],
-    queryFn: resourceForQuery ? queryFnHelp! : () => Promise.resolve([]),
-    enabled: !!resourceForQuery // --> only runs if theres a resourceForQuery, also enables auto refetching
-  })
+    queryKey: resourceForQuery ? [resourceForQuery.type, resourceForQuery.sanitizedLink] : [],
+    queryFn: resourceForQuery ? queryFn : () => Promise.resolve({ type: 'track', query: '', results: [] }),
+    enabled: !!resourceForQuery,
+  });
 }
 
 export default function GeneratorPage() {
-  // useSearchParams for query filtering, pagination, anything that edits teh query
-  // const [searchParams, setSearchParams] = useSearchParams()
-  // const linkQuery = searchParams.get('link')
+  const [resourceForQuery, setResourceForQuery] = useState<ResourceForQueryType | null>(null);
+  const [link, setLink] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const [resourceForQuery, setResourceForQuery] = useState<resourceForQueryType | null>(null)
-  const [link, setLink] = useState("");
-  // TODO impement debouncing
-  const handleLinkChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setLink(event.target.value);
-  }
+  const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => setLink(e.target.value);
+
+  const sanitizeLink = (input: string): [string, string | null] => {
+    const trimmed = input.trim();
+    if (!trimmed) return [trimmed, 'No string entered'];
+    if (!trimmed.startsWith('https://open.spotify.com/')) return [trimmed, 'Not a valid Spotify link: must start with "https://open.spotify.com/"'];
+    return [trimmed, null];
+  };
+
+  const sanitizeValidateAndBackendCall = (inputLink: string) => {
+    const [sanitizedLink, error] = sanitizeLink(inputLink);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+    setValidationError(null);
+
+    const split = sanitizedLink.split('/');
+    const linkType = split[3]; // album / track / artist
+    if (!['album', 'track', 'artist'].includes(linkType)) {
+      setValidationError('Spotify link type not supported');
+      return;
+    }
+
+    // Keep full link including ?si=...
+    setResourceForQuery({ type: linkType as ResourceForQueryType['type'], sanitizedLink });
+    setLink(sanitizedLink);
+  };
+
 
   // on page load, load link query if there
   useEffect(() => {
-    // simple + stateless
-    const url = new URLSearchParams(window.location.search)
-    const linkQuery = url.get('link')
-
-    if (linkQuery){
-      const decodedLink = decodeURIComponent(linkQuery)
-      setLink(decodedLink) // change box text, and state
-      sanitizeValidateAndBackendCall(decodedLink) // on page load, use decoded link and not state, bc state updates async
+    const url = new URLSearchParams(window.location.search);
+    const linkQuery = url.get('link');
+    if (linkQuery) {
+      // decode once (URLSearchParams already decodes most things)
+      sanitizeValidateAndBackendCall(linkQuery);
     }
-    // TODO does this need a return 
-  }, [])
+  }, []);
 
   // on submit link
   const handleSubmit = (e: React.FormEvent) => {
-    e?.preventDefault()
-    sanitizeValidateAndBackendCall(link)
+    e.preventDefault();
+    sanitizeValidateAndBackendCall(link);
+  };
+
+  const { data, error, isLoading } = getRecs(resourceForQuery);
+
+  const [tabIndexes, setTabIndexes] = useState<number[]>([0, 0, 0, 0]);
+
+  const tags: string[] = data?.query.split(',').map(t => t.trim()) || [];
+  const visibleTags = tags.slice(0, 5); // first 5 tags
+
+  // Filter results for selected tag
+  let recsForSelectedTag: RecommendationWithArtist[] = [];
+  if (data?.results && !Array.isArray(data.results)) {
+    const selectedTag = visibleTags[tabIndexes[3]]; // tabIndexes[3] for tag buttons
+    recsForSelectedTag = data.results[selectedTag] || [];
   }
-  
-  const sanitizeLink = (link : string) : [string, string | null] => {
-    if (!link) return [link, "No string entered"]
-    const trimmedLowerLink = link.trim().toLowerCase()
-    // must be a spotify link
-    if (!trimmedLowerLink.startsWith('https://open.spotify.com/')) {
-      return [trimmedLowerLink, 'Not a valid spotify link: Does not start with "https://open.spotify.com/"']
-    }
-    return [trimmedLowerLink, null]
-  }
-
-  const [validationError, setValidationError] = useState<string | null>(null)
-
-  const sanitizeValidateAndBackendCall = (decodedLink : string) => {
-    // fully sanitize/validate 
-    // TODO add loading anim for checking string vs loading anim for requesting data
-    const [sanitizedLink, error] = sanitizeLink(decodedLink)
-    if (error) {
-      setValidationError(error)
-      return
-    }
-    setValidationError(null)
-
-    console.log('Link passed valididation: ' + sanitizedLink)
-    console.log('Requesting info...')
-    // backend request, display value/error
-    console.log(sanitizedLink?.split('/'))
-    const splitSanitizedLink = sanitizedLink?.split('/')
-    const id = splitSanitizedLink[4] 
-    const linkType = splitSanitizedLink[3]
-    if (!["album", "track", "artist"].includes(linkType)){
-      return console.log('Spotify link type not supported. Please use a different link.')
-    }
-    
-    // runs getRecs implicitly
-    setResourceForQuery({type: linkType, id: id})
-  }
-
-  const { data, error, isLoading } = getRecs(resourceForQuery)
-
-  const [ tabIndexes, setTabIndexes ] = useState<number[]>([0, 0, 0])
-
-  // prepare rec groups for display
-  const recGroups: Record<string, RecommendationWithArtist[]> = Array.isArray(data?.results)
-    ? { All: data.results } // flat array -> "All" tag
-    : data?.results || {}; // already a Record, use as-is
 
   return (
     // TODO make page not scrollable
@@ -156,13 +134,13 @@ export default function GeneratorPage() {
               
               {/* Tab Headers */}
               <div className='h-20 flex justify-center'>
-                <button className={`flex-1 text-center hover:bg-black active:bg-[#222a3d] ${tabIndexes[0] === 0 ? "bg-[#222a3d] border-white  border-r-1" : "bg-[#090d14] border-b-1 border-gray-600 border-b-white"} rounded-t-2xl flex items-center justify-center border-t-1 border-l-1`}
-                  onClick={() => setTabIndexes(prev => [0, prev[1], prev[2]])}
+                <button className={`flex-1 text-center active:bg-[#222a3d] ${tabIndexes[0] === 0 ? "bg-[#222a3d] border-white  border-r-1" : "bg-[#090d14] hover:bg-black border-b-1 border-gray-600 border-b-white"} rounded-t-2xl flex items-center justify-center border-t-1 border-l-1`}
+                  onClick={() => setTabIndexes(prev => [0, prev[1], prev[2], prev[3]])}
                 >
                   LastFM
                 </button>
-                <button className={`flex-1 text-center hover:bg-black active:bg-[#222a3d] ${tabIndexes[0] === 1 ? "bg-[#222a3d] border-white  border-l-1" : "bg-[#090d14] border-b-1 border-gray-600 border-b-white"} rounded-t-2xl flex items-center justify-center border-t-1 border-r-1`}
-                  onClick={() => setTabIndexes(prev => [1, prev[1], prev[2]])}
+                <button className={`flex-1 text-center active:bg-[#222a3d] ${tabIndexes[0] === 1 ? "bg-[#222a3d] border-white  border-l-1" : "bg-[#090d14] hover:bg-black border-b-1 border-gray-600 border-b-white"} rounded-t-2xl flex items-center justify-center border-t-1 border-r-1`}
+                  onClick={() => setTabIndexes(prev => [1, prev[1], prev[2], prev[3]])}
                 >
                   Explore
                 </button>
@@ -172,46 +150,46 @@ export default function GeneratorPage() {
               <div className='w-full flex justify-around bg-[#222a3d] border-x-1 border-white'>
                 {tabIndexes[0] === 0 ? 
                   <>
-                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 0 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
-                      onClick={() => setTabIndexes(prev => [prev[0], 0, prev[2]])}
+                    <button className={`mt-5 w-[15%] text-center active:bg-[#415178] ${tabIndexes[1] === 0 ? "bg-[#415178]" : "bg-[#303c59] hover:bg-black"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 0, prev[2], prev[3]])}
                     >
                       Track Recs
                     </button>
-                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 1 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
-                      onClick={() => setTabIndexes(prev => [prev[0], 1, prev[2]])}
+                    <button className={`mt-5 w-[15%] text-center active:bg-[#415178] ${tabIndexes[1] === 1 ? "bg-[#415178]" : "bg-[#303c59] hover:bg-black"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 1, prev[2], prev[3]])}
                     >
                       Similar Tracks
                     </button>
-                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 2 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
-                      onClick={() => setTabIndexes(prev => [prev[0], 2, prev[2]])}
+                    <button className={`mt-5 w-[15%] text-center active:bg-[#415178] ${tabIndexes[1] === 2 ? "bg-[#415178]" : "bg-[#303c59] hover:bg-black"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 2, prev[2], prev[3]])}
                     >
                       Artist Recs
                     </button>
-                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 3 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
-                      onClick={() => setTabIndexes(prev => [prev[0], 3, prev[2]])}
+                    <button className={`mt-5 w-[15%] text-center active:bg-[#415178] ${tabIndexes[1] === 3 ? "bg-[#415178]" : "bg-[#303c59] hover:bg-black"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 3, prev[2], prev[3]])}
                     >
                       Similar Artists
                     </button>
-                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[1] === 4 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
-                      onClick={() => setTabIndexes(prev => [prev[0], 4, prev[2]])}
+                    <button className={`mt-5 w-[15%] text-center active:bg-[#415178] ${tabIndexes[1] === 4 ? "bg-[#415178]" : "bg-[#303c59] hover:bg-black"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], 4, prev[2], prev[3]])}
                     >
                       Album Recs
                     </button>
                   </>
                 : 
                   <>
-                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[2] === 0 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
-                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], 0])}
+                    <button className={`mt-5 w-[15%] text-center active:bg-[#415178] ${tabIndexes[2] === 0 ? "bg-[#415178]" : "bg-[#303c59] hover:bg-black"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], 0, prev[3]])}
                     >
                       Acoustic Brainz Recs
                     </button>
-                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[2] === 1 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
-                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], 1])}
+                    <button className={`mt-5 w-[15%] text-center active:bg-[#415178] ${tabIndexes[2] === 1 ? "bg-[#415178]" : "bg-[#303c59] hover:bg-black"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], 1, prev[3]])}
                     >
                       Discogs Recs
                     </button>
-                    <button className={`mt-5 w-[15%] text-center hover:bg-black active:bg-[#415178] ${tabIndexes[2] === 2 ? "bg-[#415178]" : "bg-[#303c59]"} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
-                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], 2])}
+                    <button className={`mt-5 w-[15%] text-center active:bg-[#415178] ${tabIndexes[2] === 2 ? "bg-[#415178]" : "bg-[#303c59] hover:bg-black "} ${window.innerWidth < 500 ? "text-sm p-1" : "p-2 text-lg"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], 2, prev[3]])}
                     >
                       Deezer + Discogs Recs
                     </button>
@@ -223,32 +201,42 @@ export default function GeneratorPage() {
               <div className='h-5 bg-[#222a3d] border-x-1 border-white'/>
 
               {/* Recs */}
-              {Object.entries(recGroups).map(([tag, recs], groupIndex) => (
-                <div key={tag} className='w-full mb-6'>
-                  {/* Tag Header */}
-                  <h3 className='text-white mb-2'>{tag}</h3>
-
-                  {/* 3-column grid for each group */}
-                  <div className='grid grid-cols-3 items-center justify-items-center gap-2 w-full bg-[#222a3d] border-x-1 border-white px-2'>
-                    {recs.map((rec, i) => (
-                      <div key={i} className={`flex flex-col items-center shadow-md ${window.innerWidth < 500 ? "w-full" : "w-[80%]"} ${tabIndexes[1] === 2 || tabIndexes[1] === 3 ? "h-30" : "h-50"}`}>
-                        
-                        {/* artist cases */}
-                        {tabIndexes[1] === 2 || tabIndexes[1] === 3 ? 
-                          <>
-                            <div className='flex flex-4 justify-center items-center rounded-xl border-white border-1 text-center w-full h-full bg-[#3a486b] pt-1'>{rec.artistName}</div>
-                          </>
-                        :
-                          <>
-                            <div className='flex flex-5 justify-center items-end rounded-t-xl border-white border-t-1 border-x-1 text-center w-full h-full bg-[#415178] pb-1'>{rec.recName}</div>
-                            <div className='flex flex-4 justify-center items-start rounded-b-xl border-white border-b-1 border-x-1 text-center w-full h-full bg-[#3a486b] pt-1'>{rec.artistName}</div>
-                          </>
-                        }
-                      </div>
-                    ))}
-                  </div>
+              {/* Only show tag buttons for LastFM tab */}
+              {tabIndexes[0] === 0 && visibleTags.length > 0 && (
+                <div className='flex justify-center gap-2 pb-4 border-white border-x-1 bg-[#222a3d]'>
+                  {visibleTags.map((tag, i) => (
+                    <button
+                      key={i}
+                      className={`px-4 py-2 rounded-md text-white ${tabIndexes[3] === i ? "bg-[#415178]" : "bg-[#303c59] hover:bg-black"}`}
+                      onClick={() => setTabIndexes(prev => [prev[0], prev[1], prev[2], i])}
+                    >
+                      {tag}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {/* LastFM recommendations grid */}
+              {tabIndexes[0] === 0 && (tabIndexes[1] === 0 || tabIndexes[1] === 2 || tabIndexes[1] === 4) && recsForSelectedTag.length > 0 && (
+                <div className='grid grid-cols-3 items-center justify-items-center gap-2 w-full bg-[#222a3d] border-x-1 border-white px-2'>
+                  {recsForSelectedTag.map((rec, i) => (
+                    <div key={i} className={`flex flex-col items-center shadow-md ${window.innerWidth < 500 ? "w-full" : "w-[80%]"} h-50`}>
+                      <div className='flex flex-5 justify-center items-end rounded-t-xl border-white border-t-1 border-x-1 text-center w-full h-full bg-[#415178] pb-1'>{rec.recName}</div>
+                      <div className='flex flex-4 justify-center items-start rounded-b-xl border-white border-b-1 border-x-1 text-center w-full h-full bg-[#3a486b] pt-1'>{rec.artistName}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {tabIndexes[0] === 0 && (tabIndexes[1] === 1 || tabIndexes[1] === 3) && recsForSelectedTag.length > 0 && (
+                <div className='grid grid-cols-3 items-center justify-items-center gap-2 w-full bg-[#222a3d] border-x-1 border-white px-2'>
+                  {recsForSelectedTag.map((rec, i) => (
+                    <div key={i} className={`flex flex-col items-center shadow-md ${window.innerWidth < 500 ? "w-full" : "w-[80%]"} h-50`}>
+                      <div className='flex flex-5 justify-center items-end rounded-t-xl border-white border-t-1 border-x-1 text-center w-full h-full bg-[#415178] pb-1'>{rec.recName}</div>
+                      <div className='flex flex-4 justify-center items-start rounded-b-xl border-white border-b-1 border-x-1 text-center w-full h-full bg-[#3a486b] pt-1'>{rec.artistName}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
             </div>
           </div>

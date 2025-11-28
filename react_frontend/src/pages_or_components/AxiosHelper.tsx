@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const axiosHelper = axios.create({
-    baseURL: "https://song-recommendations-web-app-7jyz.onrender.com" + "/api/v1",
+    baseURL: "https://similarsongs-ee56.onrender.com" + "/api/v1",
     headers: {
         "Content-Type" : "application/json",
     },
