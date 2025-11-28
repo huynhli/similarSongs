@@ -1,0 +1,33 @@
+# looks for dockerfile in build, maps port on machine to port in container
+services:
+  # name of container = backend
+  backend:
+    build: ./go_backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./go_backend/.env
+    environment:
+      - DOCKER=true
+
+  # db:
+    # image: postgres:latest
+    # environment:
+    #   user: user
+    #   pass: pass
+    # volumes:
+    #   - postgres_data:/var/lub/postgresql/data
+
+  # frontend:
+
+# volume = folder for multi-container sharing
+# volumes:
+#   postgres data:
+
+# can run multiple containers --> frontend service, db service --> move docker to project root or confusing routing
+
+# docker-compose up --build
+
+# can do in cloud with docker build cloud --> builds using cloud/cache, speeding up
+
+# can setup eevrything with docker init instead
