@@ -30,13 +30,8 @@ To run it locally, clone and run:
        - make dev  
   
 Your backend env file should have the following vars:  
-DB_USERNAME=  
-DB_PASSWORD=  
-DB_HOST=  
-DB_PORT=  
-DB_NAME=  
-JWT_SECRET=  
-  
-Your frontend env file should have the following vars:  
-VITE_API_BASE_URL=  
+SPOTIFY_CLIENT_ID=  
+SPOTIFY_CLIENT_SECRET=  
+REDIRECT_URI=  
+PORT=8080  
 
