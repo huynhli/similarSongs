@@ -4,7 +4,7 @@
     "noEmit": true,
     "target": "esnext",                    // Specifies the target JavaScript version
     "module": "esnext",                    // Specifies the module system (use esnext for modern apps)
-    "moduleResolution": "node",            // Allows TypeScript to find modules in node_modules
+    "moduleResolution": "bundler",            // Allows TypeScript to find modules in node_modules
     "jsx": "react-jsx",                    // Important for React 17+ and JSX transformation
     "strict": true,                        // Enable strict type checking options
     "esModuleInterop": true,               // Ensure compatibility with ES Modules

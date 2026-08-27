@@ -1,0 +1,77 @@
+# looks for dockerfile in build, maps port on machine to port in container
+services:
+  # name of container = backend
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    environment:
+      - DOCKER=true
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # db:
+    # image: postgres:latest
+    # environment:
+    #   user: user
+    #   pass: pass
+    # volumes:
+    #   - postgres_data:/var/lub/postgresql/data
+  
+  spurtcms:
+    build:
+      context: ./spurtcms
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    env_file:
+      - ./spurtcms/.env
+    environment:
+      - DOCKER=true
+    networks:
+      - app-network
+
+  spurtcms-graphql:
+    build:
+      context: ./spurtcms-graphql
+      dockerfile: Dockerfile
+    ports:
+      - "9001:9001"
+    env_file:
+      - ./spurtcms-graphql/.env
+    environment:
+      - DOCKER=true
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"       # http://localhost  → nginx → React SPA
+    depends_on:
+      - backend
+
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+# volume = folder for multi-container sharing
+# volumes:
+#   postgres data:
+
+# can run multiple containers --> frontend service, db service --> move docker to project root or confusing routing
+
+# docker-compose up --build
+
+# can do in cloud with docker build cloud --> builds using cloud/cache, speeding up
+
+# can setup eevrything with docker init instead

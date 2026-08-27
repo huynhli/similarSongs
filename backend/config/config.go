@@ -15,12 +15,14 @@ var (
 
 func LoadConfig() {
 	// Load environment variables from .env file
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+	if os.Getenv("DOCKER") != "true" {
+		if err := godotenv.Load(); err != nil {
+			log.Println("No .env file found, relying on system environment variables")
+		}
 	}
-
 	// Set config variables from environment variables
 	SpotifyClientID = os.Getenv("SPOTIFY_CLIENT_ID")
 	SpotifyClientSecret = os.Getenv("SPOTIFY_CLIENT_SECRET")
-	SpotifyRedirectURI = "https://song-recommendations-web-app.pages.dev/auth/callback" // Redirect URI for your app TODO fix when frontend hosted
+	// SpotifyRedirectURI = "https://song-recommendations-web-app.pages.dev/auth/callback"
+	SpotifyRedirectURI = "http://localhost:5173/auth/callback"
 }
