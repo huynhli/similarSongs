@@ -27,11 +27,25 @@ To run it locally, clone and run:
        - this requires docker desktop    
 5. it with make commands.
    - one terminal with docker desktop
-       - make dev  
+       - make dev
+    
+To run it with maintenance banners, it's easiest to just use docker desktop and make dev cmd.  
   
 Your backend env file should have the following vars:  
 SPOTIFY_CLIENT_ID=  
 SPOTIFY_CLIENT_SECRET=  
 REDIRECT_URI=  
 PORT=8080  
-
+  
+Your spurtcms and spurtcms-graphql env files should connect to the same db, not the same as your normal backend db but another one to store data, having the following vars:  
+- DB_HOST=  
+- DB_PORT=  
+- DB_USERNAME=  
+- DB_PASSWORD=  
+- DB_NAME=  
+  
+As is, ports are:  
+- Frontend: base  
+- Backend: 8080  
+- spurtCMS: 9000  
+- spurtCMS-graphql: 9001
